@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use copper_lib::api::mojang::{get_version, get_version_manifest};
 use std::{fs::create_dir_all, process::Command};
+use tokio::task::JoinHandle;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
@@ -70,13 +71,16 @@ async fn main() {
 				get_version_manifest(versions_dir.join("manifest.json").display()).await;
 			info!("Done updating version manifest.");
 			// TODO Error handling
+			let mut handles: Vec<JoinHandle<()>> = Vec::new();
 			for version in version_manifest.versions {
-				get_version(
-					&version,
-					versions_dir.join(format!("{}.json", version.id)).display(),
-				)
-				.await
-				.unwrap();
+				// Want multithreading? Spawn a task for every version of minecraft!
+				let path = format!("{}/{}.json", versions_dir.display(), version.id);
+				handles.push(tokio::spawn(async move {
+					get_version(&version, path).await.unwrap();
+				}));
+			}
+			for handle in handles {
+				handle.await.unwrap();
 			}
 		}
 	}
