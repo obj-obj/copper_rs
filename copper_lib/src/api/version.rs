@@ -1,11 +1,36 @@
 use serde::{Deserialize, Serialize};
 
+/// Array of vanilla versions. Fetched from the Mojang API at https://launchermeta.mojang.com/mc/game/version_manifest.json
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Version {
+pub struct Manifest {
+	pub latest: LatestVersions,
+	pub versions: Vec<Entry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LatestVersions {
+	pub release: String,
+	pub snapshot: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Entry {
+	pub id: String,
+	#[serde(alias = "type")]
+	pub version_type: String,
+	pub url: String,
+	pub time: String,
+	#[serde(alias = "releaseTime")]
+	pub release_time: String,
+}
+
+/// A profile for a specific version of Minecraft. fetched from URLs contained in the [Manifest].
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Profile {
 	#[serde(alias = "minecraftArguments")]
 	pub arguments: Arguments,
 	#[serde(alias = "assetIndex")]
-	pub asset_index: AssetIndex,
+	pub asset_index: Download,
 	pub assets: String,
 	#[serde(alias = "complianceLevel", default)]
 	pub compliance_level: i32,
@@ -25,15 +50,15 @@ pub struct Version {
 	pub version_type: String,
 }
 
-/* Types that appear in many places */
-
-// Rule
+/// An array of rules specifying whether a certain value should be used or not. If there is more than one rule in the array, all of them must be true for the value to be used.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Rule {
 	pub rules: Vec<RuleItem>,
 	pub value: RuleValue,
 }
 
+/// An item in the array of rules contained in [Rule].
+/// If `action` is `disallow`, only true if the features/os are anything but the value.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItem {
 	pub action: String,	
@@ -43,6 +68,8 @@ pub struct RuleItem {
 	pub os: Option<RuleItemOs>,
 }
 
+/// `is_demo_user`: If the Minecraft is running in demo mode.
+/// `has_custom_resolution`: If a custom resolution is being passed to Minecraft.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItemFeatures {
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -51,6 +78,9 @@ pub struct RuleItemFeatures {
 	pub has_custom_resolution: Option<bool>,
 }
 
+/// `arch`: Architecture of CPU. Observed alues: `x86`.
+/// `name`: Name of OS. Observed values: `windows`, `osx`.
+/// `version`: Version of OS. Seems to only be valid for Windows. Observed values: `^10\\.`
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItemOs {
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -68,7 +98,7 @@ pub enum RuleValue {
 	Vec(Vec<String>),
 }
 
-// Download
+/// A download for a jar, library, etc.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Download {
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -77,12 +107,12 @@ pub struct Download {
 	pub path: Option<String>,
 	pub sha1: String,
 	pub size: i32,
+	#[serde(alias = "totalSize")]
+	pub total_size: Option<i32>,
 	pub url: String,
 }
 
-/* Main JSON structure */
-
-// arguments
+/// Either the old or new format for arguments to pass to Minecraft. The new version contains an array, and the old version is a string with elements seperated by spaces.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Arguments {
@@ -90,12 +120,14 @@ pub enum Arguments {
 	OldArguments(String),
 }
 
+/// Arguments to pass to Minecraft and Java.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NewArguments {
 	pub game: Vec<Argument>,
 	pub jvm: Vec<Argument>,
 }
 
+/// An individual argument (to Minecraft or Java). Can either be a String that's always true, or a Rule that's conditional.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Argument {
@@ -103,18 +135,7 @@ pub enum Argument {
 	Rule(Rule),
 }
 
-// asset_index
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AssetIndex {
-	pub id: String,
-	pub sha1: String,
-	pub size: i32,
-	#[serde(alias = "totalSize")]
-	pub total_size: i32,
-	pub url: String,
-}
-
-// downloads
+/// Downloads for the client and server of a specific Minecraft version, as well as mappings.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Downloads {
 	pub client: Download,
@@ -126,7 +147,7 @@ pub struct Downloads {
 	pub server_mappings: Option<Download>,
 }
 
-// java_version
+/// The version of Java to launch Minecraft with. Only specifies the major version of Java to use.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JavaVersion {
 	pub component: String,
@@ -142,7 +163,7 @@ impl Default for JavaVersion {
 	}
 }
 
-// libraries
+/// A library that needs to be downloaded and added to the classpath to launch Minecraft.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Library {
 	pub downloads: LibraryDownloads,
@@ -151,6 +172,7 @@ pub struct Library {
 	pub rules: Option<Vec<RuleItem>>,
 }
 
+/// Downloads for a library's jar and classifiers (native components of libraries)
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LibraryDownloads {
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -159,6 +181,7 @@ pub struct LibraryDownloads {
 	pub classifiers: Option<Classifiers>,
 }
 
+/// Downloads for classifiers (native components) of libraries.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Classifiers {
 	#[serde(alias = "natives-linux", skip_serializing_if = "Option::is_none")]
@@ -171,12 +194,13 @@ pub struct Classifiers {
 	pub sources: Option<Download>,
 }
 
-// logging
+/// Which logging client is used by this version.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Logging {
 	pub client: LoggingClient,
 }
 
+/// Info about the logging client this version uses and sometimes flags that should be passed to Java.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoggingClient {
 	pub argument: String,

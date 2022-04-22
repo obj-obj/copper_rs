@@ -1,18 +1,14 @@
 //! Functions related to fetching data from the Mojang API.
 
+use super::version::{self, Profile};
 use chrono::DateTime;
 use reqwest::Error;
 use std::{fs::File, time::UNIX_EPOCH};
 use tracing::{error, info, warn};
 
-mod version;
-pub use version::Version;
-mod version_manifest;
-pub use version_manifest::VersionManifest;
-
 /// Gets the version manifest from the Mojang API, or from a cache file as a fallback.
 /// If a response is successfully fetched from the API, also saves it to the cache file.
-pub async fn get_version_manifest<T>(cache_path: T) -> VersionManifest
+pub async fn get_version_manifest<T>(cache_path: T) -> version::Manifest
 where
 	T: ToString,
 {
@@ -36,20 +32,17 @@ where
 }
 
 /// Attempts to fetch the version manifest from the Mojang API.
-pub async fn fetch_version_manifest() -> Result<VersionManifest, Error> {
+pub async fn fetch_version_manifest() -> Result<version::Manifest, Error> {
 	match reqwest::get("https://launchermeta.mojang.com/mc/game/version_manifest.json").await {
 		Ok(res) => {
-			return res.json::<VersionManifest>().await;
+			return res.json::<version::Manifest>().await;
 		}
 		Err(err) => Err(err),
 	}
 }
 
-/// Gets a cached version, only sending an API request if the local version is out of date.
-pub async fn get_version<T>(
-	version: &version_manifest::Version,
-	cache_path: T,
-) -> Result<Version, Error>
+/// Gets a cached profile, only sending an API request if the local profile is out of date.
+pub async fn get_version<T>(version: &version::Entry, cache_path: T) -> Result<Profile, Error>
 where
 	T: ToString,
 {
@@ -65,12 +58,15 @@ where
 							.unwrap()
 							.timestamp_millis() as u128
 					{
-						match serde_json::from_reader::<File, Version>(cache_file) {
+						match serde_json::from_reader::<File, Profile>(cache_file) {
 							Ok(version_profile) => {
 								return Ok(version_profile);
 							}
 							Err(err) => {
-								warn!("Error getting {}'s profile from cache!\n\t{err}", version.id);
+								warn!(
+									"Error getting {}'s profile from cache!\n\t{err}",
+									version.id
+								);
 							}
 						};
 					}
@@ -98,10 +94,10 @@ where
 	return version_profile;
 }
 
-/// Returns a specific version profile from the Mojang API.
-pub async fn fetch_version(version: &version_manifest::Version) -> Result<Version, Error> {
+/// Returns a specific profile from the Mojang API.
+pub async fn fetch_version(version: &version::Entry) -> Result<Profile, Error> {
 	match reqwest::get(&version.url).await {
-		Ok(res) => res.json::<Version>().await,
+		Ok(res) => res.json::<Profile>().await,
 		Err(err) => Err(err),
 	}
 }
