@@ -18,4 +18,4 @@ rust:
       - target
   artifacts:
     paths:
-      - target/release/copper_rs
+      - target/release/copper_cli
