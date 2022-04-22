@@ -1,0 +1,21 @@
+stages:
+  - test
+  - build
+
+sast:
+  stage: test
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+rust:
+  stage: build
+  image: rust:latest
+  script:
+    - cargo build --release
+  cache:
+    paths:
+      - target
+  artifacts:
+    paths:
+      - target/release/copper_rs
