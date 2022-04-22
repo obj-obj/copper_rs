@@ -9,4 +9,5 @@ Goals:
 - Built-in mod updating and downloading
 - Support Modrinth, Curseforge, Github Releases, Gitlab releases, and building from source for mods
 - Better modpack format than curseforge's scuffed format, with more features, better ability to update modpacks, and support for platforms other than curseforge
-- Speed (See https://github.com/obj-obj/copper-rs/blob/b974859cb81ecce8353ed4b75f5c328c29160318/copper_cli/src/main.rs#L76-L80)
+- Speed:
+  https://github.com/obj-obj/copper-rs/blob/b974859cb81ecce8353ed4b75f5c328c29160318/copper_cli/src/main.rs#L76-L80)
