@@ -12,6 +12,7 @@ pub struct Version {
 	#[serde(alias = "javaVersion", default)]
 	pub java_version: JavaVersion,
 	pub libraries: Vec<Library>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub logging: Option<Logging>,
 	#[serde(alias = "mainClass")]
 	pub main_class: String,
@@ -35,21 +36,28 @@ pub struct Rule {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItem {
-	pub action: String,
+	pub action: String,	
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub features: Option<RuleItemFeatures>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub os: Option<RuleItemOs>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItemFeatures {
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub is_demo_user: Option<bool>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub has_custom_resolution: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItemOs {
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub arch: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub name: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub version: Option<String>,
 }
 
@@ -63,7 +71,9 @@ pub enum RuleValue {
 // Download
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Download {
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub id: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub path: Option<String>,
 	pub sha1: String,
 	pub size: i32,
@@ -108,8 +118,11 @@ pub struct AssetIndex {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Downloads {
 	pub client: Download,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub client_mappings: Option<Download>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub server: Option<Download>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub server_mappings: Option<Download>,
 }
 
@@ -134,23 +147,27 @@ impl Default for JavaVersion {
 pub struct Library {
 	pub downloads: LibraryDownloads,
 	pub name: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub rules: Option<Vec<RuleItem>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LibraryDownloads {
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub artifact: Option<Download>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub classifiers: Option<Classifiers>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Classifiers {
-	#[serde(alias = "natives-linux")]
+	#[serde(alias = "natives-linux", skip_serializing_if = "Option::is_none")]
 	pub natives_linux: Option<Download>,
-	#[serde(alias = "natives-macos")]
+	#[serde(alias = "natives-macos", skip_serializing_if = "Option::is_none")]
 	pub natives_macos: Option<Download>,
-	#[serde(alias = "natives-windows")]
+	#[serde(alias = "natives-windows", skip_serializing_if = "Option::is_none")]
 	pub natives_windows: Option<Download>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub sources: Option<Download>,
 }
 

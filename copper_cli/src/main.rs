@@ -69,7 +69,7 @@ async fn main() {
 			info!("Updating version manifest...");
 			let version_manifest =
 				get_version_manifest(versions_dir.join("manifest.json").display()).await;
-			info!("Done updating version manifest.");
+			info!("Updated version manifest.");
 			// TODO Error handling
 			let mut handles: Vec<JoinHandle<()>> = Vec::new();
 			for version in version_manifest.versions {

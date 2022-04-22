@@ -21,7 +21,7 @@ where
 	match fetch_version_manifest().await {
 		Ok(manifest) => {
 			if let Ok(cache_file) = File::create(path) {
-				if let Err(err) = serde_json::to_writer_pretty(cache_file, &manifest) {
+				if let Err(err) = serde_json::to_writer(cache_file, &manifest) {
 					error!("Error writing version manifest to cache!\n\t{err}");
 				}
 				return manifest;
@@ -67,11 +67,10 @@ where
 					{
 						match serde_json::from_reader::<File, Version>(cache_file) {
 							Ok(version_profile) => {
-								info!("{} is up to date.", version.id);
 								return Ok(version_profile);
 							}
 							Err(err) => {
-								warn!("Error getting version profile from cache (it probably doesn't exist)!\n\t{err}");
+								warn!("Error getting {}'s profile from cache!\n\t{err}", version.id);
 							}
 						};
 					}
@@ -87,14 +86,15 @@ where
 	}
 
 	// If execution reaches this point, the file is out of date
-	info!("{} is out of date, updating...", version.id);
+	info!("{} is invalid, updating...", version.id);
 	let version_profile = fetch_version(version).await;
 	let cache_file = File::create(path).unwrap();
 	if let Ok(data) = &version_profile {
-		if let Err(err) = serde_json::to_writer_pretty(cache_file, &data) {
+		if let Err(err) = serde_json::to_writer(cache_file, &data) {
 			error!("Error writing version profile to cache!\n\t{err}");
 		};
 	}
+	info!("Updated {}.", version.id);
 	return version_profile;
 }
 
