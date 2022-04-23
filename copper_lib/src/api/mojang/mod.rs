@@ -6,8 +6,7 @@ use reqwest::Error;
 use std::{fs::File, time::UNIX_EPOCH};
 use tracing::{error, info, warn};
 
-/// Gets the version manifest from the Mojang API, or from a cache file as a fallback.
-/// If a response is successfully fetched from the API, also saves it to the cache file.
+/// Gets the version manifest from the Mojang API, or from a cache file as a fallback. If a response is successfully fetched from the API, also saves it to the cache file.
 pub async fn get_version_manifest<T>(cache_path: T) -> version::Manifest
 where
 	T: ToString,

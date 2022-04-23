@@ -1,6 +1,14 @@
+//! Data structs for the Mojang API.
+//! 
+//! Main structs:
+//! 
+//! [Manifest]: Fetched from <https://launchermeta.mojang.com/mc/game/version_manifest.json>.
+//! 
+//! [Profile]: Fetched from URLs contained in the [Manifest].
+
 use serde::{Deserialize, Serialize};
 
-/// Array of vanilla versions. Fetched from the Mojang API at https://launchermeta.mojang.com/mc/game/version_manifest.json
+/// List of Minecraft versions along with the latest version.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Manifest {
 	pub latest: LatestVersions,
@@ -24,7 +32,7 @@ pub struct Entry {
 	pub release_time: String,
 }
 
-/// A profile for a specific version of Minecraft. fetched from URLs contained in the [Manifest].
+/// A profile for a specific version of Minecraft. Contains arguments to pass to Minecraft & Java, dependancies, download URLs, and other data.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Profile {
 	#[serde(alias = "minecraftArguments")]
