@@ -89,49 +89,18 @@ pub struct RuleItem {
 impl RuleItem {
 	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
 		let features = match &self.features {
-			Some(features) => {
-				let demo = match features.is_demo_user {
-					Some(is_demo_user) => demo == is_demo_user,
-					None => true,
-				};
-				let custom_resolution = match features.has_custom_resolution {
-					Some(has_custom_resolution) => custom_resolution == has_custom_resolution,
-					None => true,
-				};
-
-				demo && custom_resolution
-			}
+			Some(features) => features.is_true(demo, custom_resolution),
 			None => true,
 		};
 		let os = match &self.os {
-			Some(os) => {
-				let arch = match &os.arch {
-					Some(arch) => match os_info::get().bitness() {
-						os_info::Bitness::X32 => arch == "x32",
-						os_info::Bitness::X64 => arch == "x86",
-						_ => true,
-					},
-					None => true,
-				};
-				let name = match &os.name {
-					Some(name) => {
-						name == match os_info::get().os_type() {
-							os_info::Type::Macos => "osx",
-							os_info::Type::Windows => "windows",
-							_ => "linux",
-						}
-					}
-					None => true,
-				};
-				// TODO parse version. Not being done right now because it's only valid on windows, and who uses a version of windows less than 10 these days?
-				let version = true;
-
-				arch && name && version
-			}
+			Some(os) => os.is_true(),
 			None => true,
 		};
 
-		features && os
+		match &self.action {
+			RuleAction::Allow => features && os,
+			RuleAction::Disallow => !(features && os),
+		}
 	}
 }
 
@@ -151,6 +120,20 @@ pub struct RuleItemFeatures {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub has_custom_resolution: Option<bool>,
 }
+impl RuleItemFeatures {
+	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
+		let demo = match self.is_demo_user {
+			Some(is_demo_user) => demo == is_demo_user,
+			None => true,
+		};
+		let custom_resolution = match self.has_custom_resolution {
+			Some(has_custom_resolution) => custom_resolution == has_custom_resolution,
+			None => true,
+		};
+
+		demo && custom_resolution
+	}
+}
 
 /// `arch`: Architecture of CPU. Observed values: `x86`.
 /// `name`: Name of OS. Observed values: `osx`, `windows`, `linux`.
@@ -163,6 +146,32 @@ pub struct RuleItemOs {
 	pub name: Option<String>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub version: Option<String>,
+}
+impl RuleItemOs {
+	pub fn is_true(&self) -> bool {
+		let arch = match &self.arch {
+			Some(arch) => match os_info::get().bitness() {
+				os_info::Bitness::X32 => arch == "x32",
+				os_info::Bitness::X64 => arch == "x86",
+				_ => true,
+			},
+			None => true,
+		};
+		let name = match &self.name {
+			Some(name) => {
+				name == match os_info::get().os_type() {
+					os_info::Type::Macos => "osx",
+					os_info::Type::Windows => "windows",
+					_ => "linux",
+				}
+			}
+			None => true,
+		};
+		// TODO parse version. Not being done right now because it's only valid on windows, and who uses a version of windows less than 10 these days?
+		let version = true;
+
+		arch && name && version
+	}
 }
 
 #[derive(Debug, Deserialize, Serialize)]
