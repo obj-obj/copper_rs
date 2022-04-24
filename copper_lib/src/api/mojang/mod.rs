@@ -1,6 +1,6 @@
 //! Functions related to fetching data from the Mojang API.
 
-use super::version::{self, Profile};
+use crate::version::{self, Profile};
 use chrono::DateTime;
 use reqwest::Error;
 use std::{fs::File, time::UNIX_EPOCH};

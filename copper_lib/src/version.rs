@@ -1,9 +1,9 @@
-//! Data structs for the Mojang API.
-//! 
+//! Data structs for version profiles.
+//!
 //! Main structs:
-//! 
+//!
 //! [Manifest]: Fetched from <https://launchermeta.mojang.com/mc/game/version_manifest.json>.
-//! 
+//!
 //! [Profile]: Fetched from URLs contained in the [Manifest].
 
 use serde::{Deserialize, Serialize};
@@ -64,16 +64,82 @@ pub struct Rule {
 	pub rules: Vec<RuleItem>,
 	pub value: RuleValue,
 }
+impl Rule {
+	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
+		for rule in &self.rules {
+			if !rule.is_true(demo, custom_resolution) {
+				return false;
+			}
+		}
+
+		true
+	}
+}
 
 /// An item in the array of rules contained in [Rule].
 /// If `action` is `disallow`, only true if the features/os are anything but the value.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItem {
-	pub action: String,	
+	pub action: RuleAction,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub features: Option<RuleItemFeatures>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub os: Option<RuleItemOs>,
+}
+impl RuleItem {
+	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
+		let features = match &self.features {
+			Some(features) => {
+				let demo = match features.is_demo_user {
+					Some(is_demo_user) => demo == is_demo_user,
+					None => true,
+				};
+				let custom_resolution = match features.has_custom_resolution {
+					Some(has_custom_resolution) => custom_resolution == has_custom_resolution,
+					None => true,
+				};
+
+				demo && custom_resolution
+			}
+			None => true,
+		};
+		let os = match &self.os {
+			Some(os) => {
+				let arch = match &os.arch {
+					Some(arch) => match os_info::get().bitness() {
+						os_info::Bitness::X32 => arch == "x32",
+						os_info::Bitness::X64 => arch == "x86",
+						_ => true,
+					},
+					None => true,
+				};
+				let name = match &os.name {
+					Some(name) => {
+						name == match os_info::get().os_type() {
+							os_info::Type::Macos => "osx",
+							os_info::Type::Windows => "windows",
+							_ => "linux",
+						}
+					}
+					None => true,
+				};
+				// TODO parse version. Not being done right now because it's only valid on windows, and who uses a version of windows less than 10 these days?
+				let version = true;
+
+				arch && name && version
+			}
+			None => true,
+		};
+
+		features && os
+	}
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RuleAction {
+	Allow,
+	Disallow,
 }
 
 /// `is_demo_user`: If the Minecraft is running in demo mode.
@@ -86,8 +152,8 @@ pub struct RuleItemFeatures {
 	pub has_custom_resolution: Option<bool>,
 }
 
-/// `arch`: Architecture of CPU. Observed alues: `x86`.
-/// `name`: Name of OS. Observed values: `windows`, `osx`.
+/// `arch`: Architecture of CPU. Observed values: `x86`.
+/// `name`: Name of OS. Observed values: `osx`, `windows`, `linux`.
 /// `version`: Version of OS. Seems to only be valid for Windows. Observed values: `^10\\.`
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuleItemOs {
