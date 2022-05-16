@@ -5,8 +5,10 @@ If anyone knows GUI dev, I can expose the library as a C API so the UI can be wr
 Current state: It downloads version manifests. Not much else.
 
 Goals:
+
 - Symlink/hardlink everything to save space on mods, resource packs, etc. (like pnpm)
 - Built-in mod updating and downloading
 - Support Modrinth, Curseforge, Github Releases, Gitlab releases, and building from source for mods
 - Better modpack format than curseforge's scuffed format, with more features, better ability to update modpacks, and support for platforms other than curseforge
-- [Speed](https://gitlab.com/obj-obj/copper_rs/-/blob/cb177deb85e41589d074a15e454fae57d7837b63/copper_cli/src/main.rs#L74-80)
+- Speed:
+  https://github.com/obj-obj/copper-rs/blob/b974859cb81ecce8353ed4b75f5c328c29160318/copper_cli/src/main.rs#L76-L80

@@ -8,7 +8,6 @@ readme = "README.md"
 [dependencies]
 clap = { version = "*", features = ["derive"] }
 copper_lib = { path = "../copper_lib" }
-dirs = "*"
 serde = "*"
 serde_json = "*"
 tokio = { version = "*", features = ["full"] }

@@ -42,6 +42,8 @@ pub struct Profile {
 	pub assets: String,
 	#[serde(alias = "complianceLevel", default)]
 	pub compliance_level: i32,
+	pub downloads: Downloads,
+	pub id: String,
 	#[serde(alias = "javaVersion", default)]
 	pub java_version: JavaVersion,
 	pub libraries: Vec<Library>,
@@ -190,7 +192,7 @@ pub struct Download {
 	pub path: Option<String>,
 	pub sha1: String,
 	pub size: i32,
-	#[serde(alias = "totalSize")]
+	#[serde(alias = "totalSize", skip_serializing_if = "Option::is_none")]
 	pub total_size: Option<i32>,
 	pub url: String,
 }

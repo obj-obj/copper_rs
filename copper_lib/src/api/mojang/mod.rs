@@ -1,16 +1,13 @@
-//! Functions related to fetching data from the Mojang API.
+//! Fetching data from the Mojang API.
 
 use crate::version::{self, Profile};
 use chrono::DateTime;
 use reqwest::Error;
-use std::{fs::File, time::UNIX_EPOCH};
+use std::{fs::File, path::PathBuf, time::UNIX_EPOCH};
 use tracing::{error, info, warn};
 
 /// Gets the version manifest from the Mojang API, or from a cache file as a fallback. If a response is successfully fetched from the API, also saves it to the cache file.
-pub async fn get_version_manifest<T>(cache_path: T) -> version::Manifest
-where
-	T: ToString,
-{
+pub async fn get_version_manifest(cache_path: impl ToString) -> version::Manifest {
 	let path = &cache_path.to_string();
 
 	match fetch_version_manifest().await {
@@ -41,13 +38,8 @@ pub async fn fetch_version_manifest() -> Result<version::Manifest, Error> {
 }
 
 /// Gets a cached profile, only sending an API request if the local profile is out of date.
-pub async fn get_version<T>(version: &version::Entry, cache_path: T) -> Result<Profile, Error>
-where
-	T: ToString,
-{
-	let path = &cache_path.to_string();
-
-	if let Ok(cache_file) = File::open(path) {
+pub async fn get_profile(version: &version::Entry, cache_path: &PathBuf) -> Result<Profile, Error> {
+	if let Ok(cache_file) = File::open(cache_path) {
 		match cache_file.metadata() {
 			Ok(metadata) => match metadata.modified() {
 				Ok(modify_time) => {
@@ -82,8 +74,8 @@ where
 
 	// If execution reaches this point, the file is out of date
 	info!("{} is invalid, updating...", version.id);
-	let version_profile = fetch_version(version).await;
-	let cache_file = File::create(path).unwrap();
+	let version_profile = fetch_profile(version).await;
+	let cache_file = File::create(cache_path).unwrap();
 	if let Ok(data) = &version_profile {
 		if let Err(err) = serde_json::to_writer(cache_file, &data) {
 			error!("Error writing version profile to cache!\n\t{err}");
@@ -94,7 +86,7 @@ where
 }
 
 /// Returns a specific profile from the Mojang API.
-pub async fn fetch_version(version: &version::Entry) -> Result<Profile, Error> {
+pub async fn fetch_profile(version: &version::Entry) -> Result<Profile, Error> {
 	match reqwest::get(&version.url).await {
 		Ok(res) => res.json::<Profile>().await,
 		Err(err) => Err(err),

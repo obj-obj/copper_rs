@@ -1,3 +1,3 @@
-//! Code related to contacting APIs for information, such as Mojang, Modrinth, or Curseforge.
+//! Module for fetching and deserialing data from APIs, such as Mojang, Modrinth, or Curseforge.
 
 pub mod mojang;

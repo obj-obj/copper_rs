@@ -1,6 +1,14 @@
 use clap::{Parser, Subcommand};
-use copper_lib::api::mojang::{get_version, get_version_manifest};
-use std::{fs::create_dir_all, process::Command};
+use copper_lib::{
+	api::mojang::{get_profile, get_version_manifest},
+	instance::Instance,
+	Directories,
+};
+use std::{
+	error::Error,
+	fs::{create_dir_all, File},
+	process::Command,
+};
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
@@ -33,55 +41,59 @@ enum InstanceCommand {
 }
 
 #[tokio::main]
-async fn main() {
-	// Directory definitions
-	let folder_name = "copper_launcher";
-	let cache_dir = dirs::cache_dir().unwrap().join(folder_name);
-	let config_dir = dirs::config_dir().unwrap().join(folder_name);
-
-	let instance_dir = config_dir.join("instances");
-	let versions_dir = cache_dir.join("versions");
-
-	// Create directories if they don't already exist
-	create_dir_all(&cache_dir).unwrap();
-	create_dir_all(&config_dir).unwrap();
-	create_dir_all(&instance_dir).unwrap();
-	create_dir_all(&versions_dir).unwrap();
-
+async fn main() -> Result<(), Box<dyn Error>> {
 	// Initialize logging
 	let subscriber = FmtSubscriber::builder().without_time().finish();
 	tracing::subscriber::set_global_default(subscriber).expect("Failed to initialize logging!");
 
 	// Main init
 	let args = Args::parse();
+	let dir = Directories::new("copper_launcher");
+
+	info!("Config directory: {}", dir.config.display());
+	info!("Cache directory: {}", dir.cache.display());
 
 	match &args.command {
 		Commands::Instance { command } => match command {
 			InstanceCommand::Create { name } => {
-				create_dir_all(instance_dir.join(name)).unwrap();
+				let mut instance = Instance::new(
+					name,
+					&dir,
+					serde_json::de::from_reader(File::open(
+						dir.versions.join("1.18.2/profile.json"),
+					)?)?,
+				);
+				instance.update_libraries().await?;
+				instance.update_client().await?;
 			}
+
 			InstanceCommand::List => {
 				info!("Yes this is just ls");
-				Command::new("ls").arg(&instance_dir).spawn().unwrap();
+				Command::new("ls").arg(&dir.instances).spawn()?;
 			}
 		},
+
 		Commands::Update => {
-			info!("Updating version manifest...");
+			info!("Updating profiles...");
 			let version_manifest =
-				get_version_manifest(versions_dir.join("manifest.json").display()).await;
-			info!("Updated version manifest.");
+				get_version_manifest(dir.versions.join("manifest.json").display()).await;
+
 			// TODO Error handling
 			let mut handles: Vec<JoinHandle<()>> = Vec::new();
 			for version in version_manifest.versions {
 				// Want multithreading? Spawn a task for every version of minecraft!
-				let path = format!("{}/{}.json", versions_dir.display(), version.id);
+				let path = dir.versions.join(&version.id).join("profile.json");
+				create_dir_all(path.parent().unwrap())?;
 				handles.push(tokio::spawn(async move {
-					get_version(&version, path).await.unwrap();
+					get_profile(&version, &path).await.unwrap();
 				}));
 			}
 			for handle in handles {
-				handle.await.unwrap();
+				handle.await?;
 			}
+			info!("Updated profiles.");
 		}
 	}
+
+	Ok(())
 }
