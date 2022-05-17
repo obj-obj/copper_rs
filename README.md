@@ -11,4 +11,4 @@ Goals:
 - Support Modrinth, Curseforge, Github Releases, Gitlab releases, and building from source for mods
 - Better modpack format than curseforge's scuffed format, with more features, better ability to update modpacks, and support for platforms other than curseforge
 - Speed:
-  https://github.com/obj-obj/copper-rs/blob/b974859cb81ecce8353ed4b75f5c328c29160318/copper_cli/src/main.rs#L76-L80
+  https://github.com/obj-obj/copper_rs/blob/7103b0ab2bbc80df5c2646983bf4884a708e521d/copper_cli/src/main.rs#L83-L90
