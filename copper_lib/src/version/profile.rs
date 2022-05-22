@@ -1,42 +1,11 @@
-//! Data structs for version profiles.
-//!
-//! Main structs:
-//!
-//! [Manifest]: Fetched from <https://launchermeta.mojang.com/mc/game/version_manifest.json>.
-//!
-//! [Profile]: Fetched from URLs contained in the [Manifest].
-
 use serde::{Deserialize, Serialize};
 
-/// List of Minecraft versions along with the latest version.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Manifest {
-	pub latest: LatestVersions,
-	pub versions: Vec<Entry>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct LatestVersions {
-	pub release: String,
-	pub snapshot: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Entry {
-	pub id: String,
-	#[serde(alias = "type")]
-	pub version_type: String,
-	pub url: String,
-	pub time: String,
-	#[serde(alias = "releaseTime")]
-	pub release_time: String,
-}
-
 /// A profile for a specific version of Minecraft. Contains arguments to pass to Minecraft & Java, dependancies, download URLs, and other data.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Profile {
 	#[serde(alias = "minecraftArguments")]
 	pub arguments: Arguments,
+	#[serde(alias = "assetIndex")]
 	pub asset_index: Download,
 	pub assets: String,
 	#[serde(alias = "complianceLevel", default)]
@@ -60,26 +29,15 @@ pub struct Profile {
 }
 
 /// An array of rules specifying whether a certain value should be used or not. If there is more than one rule in the array, all of them must be true for the value to be used.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Rule {
 	pub rules: Vec<RuleItem>,
 	pub value: RuleValue,
 }
-impl Rule {
-	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
-		for rule in &self.rules {
-			if !rule.is_true(demo, custom_resolution) {
-				return false;
-			}
-		}
-
-		true
-	}
-}
 
 /// An item in the array of rules contained in [Rule].
 /// If `action` is `disallow`, only true if the features/os are anything but the value.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RuleItem {
 	pub action: RuleAction,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -87,25 +45,8 @@ pub struct RuleItem {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub os: Option<RuleItemOs>,
 }
-impl RuleItem {
-	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
-		let features = match &self.features {
-			Some(features) => features.is_true(demo, custom_resolution),
-			None => true,
-		};
-		let os = match &self.os {
-			Some(os) => os.is_true(),
-			None => true,
-		};
 
-		match &self.action {
-			RuleAction::Allow => features && os,
-			RuleAction::Disallow => !(features && os),
-		}
-	}
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleAction {
 	Allow,
@@ -114,32 +55,18 @@ pub enum RuleAction {
 
 /// `is_demo_user`: If the Minecraft is running in demo mode.
 /// `has_custom_resolution`: If a custom resolution is being passed to Minecraft.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RuleItemFeatures {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub is_demo_user: Option<bool>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub has_custom_resolution: Option<bool>,
 }
-impl RuleItemFeatures {
-	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {
-		let demo = match self.is_demo_user {
-			Some(is_demo_user) => demo == is_demo_user,
-			None => true,
-		};
-		let custom_resolution = match self.has_custom_resolution {
-			Some(has_custom_resolution) => custom_resolution == has_custom_resolution,
-			None => true,
-		};
-
-		demo && custom_resolution
-	}
-}
 
 /// `arch`: Architecture of CPU. Observed values: `x86`.
 /// `name`: Name of OS. Observed values: `osx`, `windows`, `linux`.
 /// `version`: Version of OS. Seems to only be valid for Windows. Observed values: `^10\\.`
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RuleItemOs {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub arch: Option<String>,
@@ -148,34 +75,8 @@ pub struct RuleItemOs {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub version: Option<String>,
 }
-impl RuleItemOs {
-	pub fn is_true(&self) -> bool {
-		let arch = match &self.arch {
-			Some(arch) => match os_info::get().bitness() {
-				os_info::Bitness::X32 => arch == "x32",
-				os_info::Bitness::X64 => arch == "x86",
-				_ => true,
-			},
-			None => true,
-		};
-		let name = match &self.name {
-			Some(name) => {
-				name == match os_info::get().os_type() {
-					os_info::Type::Macos => "osx",
-					os_info::Type::Windows => "windows",
-					_ => "linux",
-				}
-			}
-			None => true,
-		};
-		// TODO parse version. Not being done right now because it's only valid on windows, and who uses a version of windows less than 10 these days?
-		let version = true;
 
-		arch && name && version
-	}
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum RuleValue {
 	String(String),
@@ -183,7 +84,7 @@ pub enum RuleValue {
 }
 
 /// A download for a jar, library, etc.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Download {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub id: Option<String>,
@@ -197,7 +98,7 @@ pub struct Download {
 }
 
 /// Either the old or new format for arguments to pass to Minecraft. The new version contains an array, and the old version is a string with elements seperated by spaces.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Arguments {
 	NewArguments(NewArguments),
@@ -205,14 +106,14 @@ pub enum Arguments {
 }
 
 /// Arguments to pass to Minecraft and Java.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NewArguments {
 	pub game: Vec<Argument>,
 	pub jvm: Vec<Argument>,
 }
 
 /// An individual argument (to Minecraft or Java). Can either be a String that's always true, or a Rule that's conditional.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Argument {
 	String(String),
@@ -220,7 +121,7 @@ pub enum Argument {
 }
 
 /// Downloads for the client and server of a specific Minecraft version, as well as mappings.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Downloads {
 	pub client: Download,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -232,7 +133,7 @@ pub struct Downloads {
 }
 
 /// The version of Java to launch Minecraft with. Only specifies the major version of Java to use.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct JavaVersion {
 	pub component: String,
 	#[serde(alias = "majorVersion")]
@@ -241,38 +142,23 @@ pub struct JavaVersion {
 impl Default for JavaVersion {
 	fn default() -> Self {
 		Self {
-			component: String::from("java-runtime-beta"),
+			component: "java-runtime-beta".into(),
 			major_version: 17,
 		}
 	}
 }
 
 /// A library that needs to be downloaded and added to the classpath to launch Minecraft.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Library {
 	pub downloads: LibraryDownloads,
 	pub name: String,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub rules: Option<Vec<RuleItem>>,
 }
-impl Library {
-	pub fn is_active(&self) -> bool {
-		let mut active = true;
-		if let Some(rules) = &self.rules {
-			for rule in rules {
-				// The `demo` and `custom_resolution` values only show up on rules applied to java arguments, so they don't matter for library rules.
-				if !rule.is_true(false, false) {
-					active = false;
-					break;
-				}
-			}
-		}
-		active
-	}
-}
 
 /// Downloads for a library's jar and classifiers (native components of libraries)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LibraryDownloads {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub artifact: Option<Download>,
@@ -281,7 +167,7 @@ pub struct LibraryDownloads {
 }
 
 /// Downloads for classifiers (native components) of libraries.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Classifiers {
 	#[serde(alias = "natives-linux", skip_serializing_if = "Option::is_none")]
 	pub natives_linux: Option<Download>,
@@ -294,13 +180,13 @@ pub struct Classifiers {
 }
 
 /// Which logging client is used by this version.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Logging {
 	pub client: LoggingClient,
 }
 
 /// Info about the logging client this version uses and sometimes flags that should be passed to Java.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LoggingClient {
 	pub argument: String,
 	pub file: Download,

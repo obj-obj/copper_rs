@@ -18,4 +18,5 @@ serde_json = "*"
 sha1 = "*"
 toml = "*"
 tracing = "*"
+tokio = { version = "*", features = ["full"] }
 zip = "*"

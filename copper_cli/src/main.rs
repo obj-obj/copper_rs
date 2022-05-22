@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	match &args.command {
 		Commands::Instance { command } => match command {
 			InstanceCommand::Create { name } => {
-				let mut instance = Instance::new(
+				let instance = Instance::new(
 					name,
 					&dir,
 					serde_json::de::from_reader(File::open(
@@ -74,8 +74,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 		Commands::Update => {
 			info!("Updating profiles...");
-			let version_manifest =
-				get_version_manifest(dir.versions.join("manifest.json").display()).await;
+			let version_manifest = get_version_manifest(dir.versions.join("manifest.json")).await;
 
 			// TODO Error handling
 			let mut handles: Vec<JoinHandle<()>> = Vec::new();
