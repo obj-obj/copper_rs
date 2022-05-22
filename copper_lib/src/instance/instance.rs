@@ -69,11 +69,13 @@ impl Instance {
 		self.update_libraries().await;
 
 		let args = self.parse_arguments(classpath, false, false);
-		let mut command = Command::new("java")
+		Command::new("java")
+			.current_dir(&self.path)
 			.args(args)
 			.spawn()
-			.expect("Failed to launch Minecraft instance!");
-		command.wait_with_output().unwrap();
+			.expect("Failed to launch Minecraft instance!")
+			.wait_with_output()
+			.unwrap();
 	}
 
 	// Minecraft/JVM arguments
