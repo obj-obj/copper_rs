@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 base16ct = { version = "*", features = ["alloc"] }
 chrono = "*"
+default = { path = "../default" }
 dirs = "*"
 os_info = "*"
 reqwest = { version = "*", features = ["json", "rustls-tls"] }

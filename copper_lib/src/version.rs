@@ -37,7 +37,6 @@ pub struct Entry {
 pub struct Profile {
 	#[serde(alias = "minecraftArguments")]
 	pub arguments: Arguments,
-	#[serde(alias = "assetIndex")]
 	pub asset_index: Download,
 	pub assets: String,
 	#[serde(alias = "complianceLevel", default)]
@@ -255,6 +254,21 @@ pub struct Library {
 	pub name: String,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub rules: Option<Vec<RuleItem>>,
+}
+impl Library {
+	pub fn is_active(&self) -> bool {
+		let mut active = true;
+		if let Some(rules) = &self.rules {
+			for rule in rules {
+				// The `demo` and `custom_resolution` values only show up on rules applied to java arguments, so they don't matter for library rules.
+				if !rule.is_true(false, false) {
+					active = false;
+					break;
+				}
+			}
+		}
+		active
+	}
 }
 
 /// Downloads for a library's jar and classifiers (native components of libraries)

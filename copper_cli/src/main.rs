@@ -63,8 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 						dir.versions.join("1.18.2/profile.json"),
 					)?)?,
 				);
-				instance.update_libraries().await?;
-				instance.update_client().await?;
+				instance.launch().await;
 			}
 
 			InstanceCommand::List => {

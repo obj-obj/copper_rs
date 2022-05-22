@@ -1,5 +1,5 @@
 [workspace]
-members = ["copper_lib", "copper_cli"]
+members = ["copper_lib", "copper_cli", "default"]
 
 # Optimize for speed and binary size on release builds
 [profile.release]

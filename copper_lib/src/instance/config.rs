@@ -1,10 +1,12 @@
 use crate::Mod;
+use default::default;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
 	pub id: String,
 	pub name: String,
+	#[serde(default)]
 	pub mods: Vec<Mod>,
 }
 impl Config {
@@ -12,7 +14,7 @@ impl Config {
 		Self {
 			id: id.to_string(),
 			name: name.to_string(),
-			mods: Vec::new(),
+			..default()
 		}
 	}
 }
