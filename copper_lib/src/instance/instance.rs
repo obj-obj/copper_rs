@@ -3,6 +3,7 @@ use crate::{
 	version::{Argument, Arguments, Profile, RuleValue},
 	Directories,
 };
+use reqwest::IntoUrl;
 use sha1::{Digest, Sha1};
 use std::{
 	fs::{self, create_dir_all, File},
@@ -87,7 +88,7 @@ impl Instance {
 				self.add_other_jvm_arguments(&mut args);
 				let mut new_arguments = Vec::new();
 				for argument in arguments.split(" ") {
-					new_arguments.push(Argument::String(argument.to_string()));
+					new_arguments.push(Argument::String(argument.into()));
 				}
 				self.parse_arguments_vec(&mut args, &new_arguments, demo, custom_resolution)
 			}
@@ -249,7 +250,7 @@ pub fn generate_classpath(
 	classpath
 }
 
-async fn download_if_invalid(path: &PathBuf, url: impl ToString, sha1: impl ToString) {
+async fn download_if_invalid(path: &PathBuf, url: impl IntoUrl, sha1: impl ToString) {
 	let mut file = File::options()
 		.read(true)
 		.write(true)
@@ -267,12 +268,7 @@ async fn download_if_invalid(path: &PathBuf, url: impl ToString, sha1: impl ToSt
 		);
 
 		file = File::create(&path).unwrap();
-		let data = reqwest::get(url.to_string())
-			.await
-			.unwrap()
-			.bytes()
-			.await
-			.unwrap();
+		let data = reqwest::get(url).await.unwrap().bytes().await.unwrap();
 		file.write_all(&data).unwrap();
 		info!("Updated {:?}.", path.file_name().unwrap());
 	}
