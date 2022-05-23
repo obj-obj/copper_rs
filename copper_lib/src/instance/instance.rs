@@ -153,19 +153,26 @@ impl Instance {
 	// Assets
 	pub async fn update_assets(&self) {
 		info!("Updating assets for {}", self.profile.id);
+
+		let mut handles = Vec::new();
 		let assetspath = self.dir.assets.join("objects");
 		for asset in &self.asset_index.objects {
-			let entry = asset.1;
+			let entry = asset.1.to_owned();
 			let doublehash = format!("{}/{}", &entry.hash[..2], entry.hash);
 			let hashpath = assetspath.join(&doublehash);
 			create_dir_all(hashpath.parent().unwrap()).unwrap();
-			download_if_invalid(
-				&hashpath,
-				format!("https://resources.download.minecraft.net/{doublehash}"),
-				&entry.hash,
-			)
-			.await
-			.unwrap();
+			handles.push(tokio::spawn(async move {
+				download_if_invalid(
+					&hashpath,
+					format!("https://resources.download.minecraft.net/{doublehash}"),
+					&entry.hash,
+				)
+				.await
+				.unwrap();
+			}));
+		}
+		for handle in handles {
+			handle.await.unwrap();
 		}
 		info!("Updated assets for {}.", self.profile.id);
 	}

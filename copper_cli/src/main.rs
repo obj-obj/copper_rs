@@ -31,7 +31,7 @@ enum Commands {
 #[derive(Subcommand)]
 enum InstanceCommand {
 	/// Testing command
-	Test { name: String },
+	Test { version: String },
 	/// Lists all instances
 	List,
 }
@@ -51,14 +51,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	match &args.command {
 		Commands::Instance { command } => match command {
-			InstanceCommand::Test { name } => {
+			InstanceCommand::Test { version } => {
 				let manifest = get_version_manifest(dir.versions.join("manifest.json")).await;
 				let instance = Instance::new(
-					name,
+					"test",
 					&dir,
 					get_profile(
-						manifest.versions.get("1.19-pre2").unwrap(),
-						dir.versions.join("1.19-pre2/profile.json"),
+						manifest.versions.get(version).unwrap(),
+						dir.versions.join(version).join("profile.json"),
 					)
 					.await
 					.unwrap(),
