@@ -6,10 +6,15 @@
 //!
 //! [Profile]: Fetched from URLs contained in the [Manifest].
 
-mod manifest;
-pub use manifest::*;
-mod profile;
-pub use profile::*;
+pub mod asset_index;
+pub use asset_index::AssetIndex;
+
+pub mod manifest;
+pub use manifest::Manifest;
+
+pub mod profile;
+pub use profile::Profile;
+use profile::*;
 
 impl Rule {
 	pub fn is_true(&self, demo: bool, custom_resolution: bool) -> bool {

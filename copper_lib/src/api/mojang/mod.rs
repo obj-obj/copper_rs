@@ -1,13 +1,16 @@
 //! Fetching data from the Mojang API.
 
-use crate::version::{self, Profile};
+use crate::{
+	data::{self, manifest, profile::Download, AssetIndex, Profile},
+	get_from_download, Directories,
+};
 use chrono::DateTime;
 use reqwest::Error;
 use std::{fs::File, path::Path, time::UNIX_EPOCH};
 use tracing::{error, info, warn};
 
 /// Gets the version manifest from the Mojang API, or from a cache file as a fallback. If a response is successfully fetched from the API, also saves it to the cache file.
-pub async fn get_version_manifest(cache_path: impl AsRef<Path>) -> version::Manifest {
+pub async fn get_version_manifest(cache_path: impl AsRef<Path>) -> data::Manifest {
 	match fetch_version_manifest().await {
 		Ok(manifest) => {
 			if let Ok(cache_file) = File::create(&cache_path) {
@@ -26,10 +29,10 @@ pub async fn get_version_manifest(cache_path: impl AsRef<Path>) -> version::Mani
 }
 
 /// Attempts to fetch the version manifest from the Mojang API.
-pub async fn fetch_version_manifest() -> Result<version::Manifest, Error> {
+pub async fn fetch_version_manifest() -> Result<data::Manifest, Error> {
 	match reqwest::get("https://launchermeta.mojang.com/mc/game/version_manifest.json").await {
 		Ok(res) => {
-			return res.json::<version::Manifest>().await;
+			return res.json::<data::Manifest>().await;
 		}
 		Err(err) => Err(err),
 	}
@@ -37,7 +40,7 @@ pub async fn fetch_version_manifest() -> Result<version::Manifest, Error> {
 
 /// Gets a cached profile, only sending an API request if the local profile is out of date.
 pub async fn get_profile(
-	version: &version::Entry,
+	version: &manifest::Entry,
 	cache_path: impl AsRef<Path>,
 ) -> Result<Profile, Error> {
 	if let Ok(cache_file) = File::open(&cache_path) {
@@ -87,9 +90,21 @@ pub async fn get_profile(
 }
 
 /// Returns a specific profile from the Mojang API.
-pub async fn fetch_profile(version: &version::Entry) -> Result<Profile, Error> {
+pub async fn fetch_profile(version: &manifest::Entry) -> Result<Profile, Error> {
 	match reqwest::get(&version.url).await {
 		Ok(res) => res.json::<Profile>().await,
 		Err(err) => Err(err),
 	}
+}
+
+pub async fn get_asset_index(
+	index: &Download,
+	dir: &Directories,
+) -> Result<AssetIndex, Box<dyn std::error::Error>> {
+	get_from_download(
+		&index,
+		&dir.asset_indexes
+			.join(format!("{}.json", index.id.as_ref().unwrap())),
+	)
+	.await
 }

@@ -1,10 +1,12 @@
 use super::Config;
 use crate::{
-	version::{Argument, Arguments, Profile, RuleValue},
-	Directories,
+	api::mojang::get_asset_index,
+	data::{
+		profile::{Argument, Arguments, RuleValue},
+		AssetIndex, Profile,
+	},
+	download_if_invalid, Directories,
 };
-use reqwest::IntoUrl;
-use sha1::{Digest, Sha1};
 use std::{
 	fs::{self, create_dir_all, File},
 	io::{self, Write},
@@ -18,6 +20,8 @@ pub struct Instance {
 	classpath: String,
 	config: Config,
 	dir: Directories,
+
+	asset_index: AssetIndex,
 	profile: Profile,
 
 	path: PathBuf,
@@ -25,7 +29,7 @@ pub struct Instance {
 	jar_path: PathBuf,
 }
 impl Instance {
-	pub fn new(name: impl ToString, dir: &Directories, profile: Profile) -> Self {
+	pub async fn new(name: impl ToString, dir: &Directories, profile: Profile) -> Self {
 		let path = dir.instances.join(name.to_string());
 		create_dir_all(&path).unwrap();
 
@@ -51,6 +55,8 @@ impl Instance {
 			classpath: generate_classpath(&profile, dir, &jar_path),
 			config,
 			dir: dir.to_owned(),
+
+			asset_index: get_asset_index(&profile.asset_index, dir).await.unwrap(),
 			profile,
 
 			path: path.to_owned(),
@@ -60,6 +66,7 @@ impl Instance {
 	}
 
 	pub async fn launch(&self) {
+		self.update_assets().await;
 		self.update_client().await;
 		self.update_libraries().await;
 
@@ -67,6 +74,7 @@ impl Instance {
 		let mut command = Command::new("java");
 		command.current_dir(&self.path).args(args);
 
+		info!("Launching {}...", self.profile.id);
 		command
 			.spawn()
 			.expect("Failed to launch Minecraft instance!")
@@ -142,6 +150,26 @@ impl Instance {
 		args.push(arg);
 	}
 
+	// Assets
+	pub async fn update_assets(&self) {
+		info!("Updating assets for {}", self.profile.id);
+		let assetspath = self.dir.assets.join("objects");
+		for asset in &self.asset_index.objects {
+			let entry = asset.1;
+			let doublehash = format!("{}/{}", &entry.hash[..2], entry.hash);
+			let hashpath = assetspath.join(&doublehash);
+			create_dir_all(hashpath.parent().unwrap()).unwrap();
+			download_if_invalid(
+				&hashpath,
+				format!("https://resources.download.minecraft.net/{doublehash}"),
+				&entry.hash,
+			)
+			.await
+			.unwrap();
+		}
+		info!("Updated assets for {}.", self.profile.id);
+	}
+
 	// Libraries
 	pub async fn update_libraries(&self) {
 		info!("Updating libraries for {}...", self.profile.id);
@@ -159,7 +187,9 @@ impl Instance {
 					if let Some(path) = &download.path {
 						let path = dir.libraries.join(path);
 						create_dir_all(path.parent().unwrap()).unwrap();
-						download_if_invalid(&path, &download.url, &download.sha1).await;
+						download_if_invalid(&path, &download.url, &download.sha1)
+							.await
+							.unwrap();
 					}
 				}
 
@@ -184,7 +214,9 @@ impl Instance {
 						let path = dir.libraries.join(path);
 						create_dir_all(path.parent().unwrap()).unwrap();
 
-						download_if_invalid(&path, &natives.url, &natives.sha1).await;
+						download_if_invalid(&path, &natives.url, &natives.sha1)
+							.await
+							.unwrap();
 
 						let mut zip = ZipArchive::new(File::open(path).unwrap()).unwrap();
 						for i in 0..zip.len() {
@@ -212,6 +244,10 @@ impl Instance {
 			}));
 		}
 
+		for handle in handles {
+			handle.await.unwrap();
+		}
+
 		info!("Updated libraries for {}.", self.profile.id);
 	}
 
@@ -221,7 +257,8 @@ impl Instance {
 			&self.profile.downloads.client.url,
 			&self.profile.downloads.client.sha1,
 		)
-		.await;
+		.await
+		.unwrap();
 	}
 }
 
@@ -248,30 +285,6 @@ pub fn generate_classpath(
 	}
 	classpath += jar_path.as_ref().to_str().unwrap();
 	classpath
-}
-
-async fn download_if_invalid(path: &PathBuf, url: impl IntoUrl, sha1: impl ToString) {
-	let mut file = File::options()
-		.read(true)
-		.write(true)
-		.create(true)
-		.open(path)
-		.unwrap();
-
-	let mut hasher = Sha1::new();
-	io::copy(&mut file, &mut hasher).unwrap();
-	let hash = base16ct::lower::encode_string(&hasher.finalize());
-	if hash != sha1.to_string() {
-		info!(
-			"{:?} is out of date, updating...",
-			path.file_name().unwrap()
-		);
-
-		file = File::create(&path).unwrap();
-		let data = reqwest::get(url).await.unwrap().bytes().await.unwrap();
-		file.write_all(&data).unwrap();
-		info!("Updated {:?}.", path.file_name().unwrap());
-	}
 }
 
 fn write_default_config(path: impl AsRef<Path>, id: impl ToString, name: impl ToString) -> Config {

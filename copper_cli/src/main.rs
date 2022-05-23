@@ -4,11 +4,7 @@ use copper_lib::{
 	instance::Instance,
 	Directories,
 };
-use std::{
-	error::Error,
-	fs::{create_dir_all, File},
-	process::Command,
-};
+use std::{error::Error, fs::create_dir_all, process::Command};
 use tokio::task::JoinHandle;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
@@ -34,8 +30,8 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum InstanceCommand {
-	/// Creates a new instance
-	Create { name: String },
+	/// Testing command
+	Test { name: String },
 	/// Lists all instances
 	List,
 }
@@ -55,14 +51,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	match &args.command {
 		Commands::Instance { command } => match command {
-			InstanceCommand::Create { name } => {
+			InstanceCommand::Test { name } => {
+				let manifest = get_version_manifest(dir.versions.join("manifest.json")).await;
 				let instance = Instance::new(
 					name,
 					&dir,
-					serde_json::de::from_reader(File::open(
-						dir.versions.join("1.18.2/profile.json"),
-					)?)?,
-				);
+					get_profile(
+						manifest.versions.get("1.19-pre2").unwrap(),
+						dir.versions.join("1.19-pre2/profile.json"),
+					)
+					.await
+					.unwrap(),
+				)
+				.await;
 				instance.launch().await;
 			}
 
@@ -80,10 +81,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			let mut handles: Vec<JoinHandle<()>> = Vec::new();
 			for version in version_manifest.versions {
 				// Want multithreading? Spawn a task for every version of minecraft!
-				let path = dir.versions.join(&version.id).join("profile.json");
+				let path = dir.versions.join(&version.0).join("profile.json");
 				create_dir_all(path.parent().unwrap())?;
 				handles.push(tokio::spawn(async move {
-					get_profile(&version, &path).await.unwrap();
+					get_profile(&version.1, &path).await.unwrap();
 				}));
 			}
 			for handle in handles {
