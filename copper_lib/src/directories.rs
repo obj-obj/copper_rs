@@ -12,7 +12,6 @@ pub struct Directories {
 	pub asset_indexes: PathBuf,
 	pub instances: PathBuf,
 	pub libraries: PathBuf,
-	pub natives: PathBuf,
 	pub versions: PathBuf,
 }
 impl Directories {
@@ -26,14 +25,12 @@ impl Directories {
 		let asset_indexes = assets.join("indexes");
 		let instances = config.join("instances");
 		let libraries = cache.join("libraries");
-		let natives = cache.join("natives");
 		let versions = cache.join("versions");
 
 		// `create_dir_all` is recursive, which will result in the `cache` and `config` directories also being created.
 		create_dir_all(&asset_indexes).unwrap();
 		create_dir_all(&instances).unwrap();
 		create_dir_all(&libraries).unwrap();
-		create_dir_all(&natives).unwrap();
 		create_dir_all(&versions).unwrap();
 
 		Self {
@@ -45,7 +42,6 @@ impl Directories {
 			asset_indexes,
 			instances,
 			libraries,
-			natives,
 			versions,
 		}
 	}

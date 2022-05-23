@@ -26,6 +26,7 @@ pub struct Instance {
 
 	path: PathBuf,
 	assets_dir: PathBuf,
+	natives_dir: PathBuf,
 	jar_path: PathBuf,
 }
 impl Instance {
@@ -50,6 +51,8 @@ impl Instance {
 
 		let version_dir = dir.versions.join(&profile.id);
 		let jar_path = version_dir.join("client.jar");
+		let natives_dir = version_dir.join("natives");
+		create_dir_all(&natives_dir).unwrap();
 
 		Self {
 			classpath: generate_classpath(&profile, dir, &jar_path),
@@ -61,6 +64,7 @@ impl Instance {
 
 			path: path.to_owned(),
 			assets_dir: dir.cache.join("assets"),
+			natives_dir,
 			jar_path,
 		}
 	}
@@ -71,10 +75,17 @@ impl Instance {
 		self.update_libraries().await;
 
 		let args = self.parse_arguments(false, false);
-		let mut command = Command::new("java");
+		let program: &str;
+		if self.profile.java_version.major_version == 17 {
+			program = "java";
+		} else {
+			program = "java8";
+		}
+		let mut command = Command::new(program);
 		command.current_dir(&self.path).args(args);
 
 		info!("Launching {}...", self.profile.id);
+		info!("{:?}", command);
 		command
 			.spawn()
 			.expect("Failed to launch Minecraft instance!")
@@ -93,6 +104,12 @@ impl Instance {
 				self.parse_arguments_vec(&mut args, &arguments.game, demo, custom_resolution)
 			}
 			Arguments::OldArguments(arguments) => {
+				let new_arguments = vec![
+					Argument::String("-Djava.library.path=${natives_directory}".into()),
+					Argument::String("-cp".into()),
+					Argument::String("${classpath}".into()),
+				];
+				self.parse_arguments_vec(&mut args, &new_arguments, demo, custom_resolution);
 				self.add_other_jvm_arguments(&mut args);
 				let mut new_arguments = Vec::new();
 				for argument in arguments.split(" ") {
@@ -143,7 +160,7 @@ impl Instance {
 		arg = arg.replace("${game_directory}", self.path.to_str().unwrap());
 		arg = arg.replace("${launcher_name}", "Copper Launcher");
 		arg = arg.replace("${launcher_version}", "v0.1.0");
-		arg = arg.replace("${natives_directory}", self.dir.natives.to_str().unwrap());
+		arg = arg.replace("${natives_directory}", self.natives_dir.to_str().unwrap());
 		arg = arg.replace("${version_name}", &self.profile.id);
 		arg = arg.replace("${version_type}", &self.profile.version_type);
 
@@ -184,6 +201,7 @@ impl Instance {
 		let mut handles = Vec::new();
 		for library in &self.profile.libraries {
 			let dir = self.dir.clone();
+			let natives_dir = self.natives_dir.clone();
 			let library = library.to_owned();
 			handles.push(tokio::spawn(async move {
 				if !library.is_active() {
@@ -237,7 +255,7 @@ impl Instance {
 							let extension = extension.unwrap();
 
 							if extension == "so" || extension == "dll" || extension == "dylib" {
-								let destination_path = dir.natives.join(file.name());
+								let destination_path = natives_dir.join(file.name());
 								if !destination_path.exists() {
 									let mut destination = File::create(destination_path).unwrap();
 
