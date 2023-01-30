@@ -1,0 +1,21 @@
+[package]
+name = "copper_cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+
+[dependencies]
+copper_lib = { path = "../copper_lib" }
+serde = "1"
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dependencies.clap]
+version = "4"
+features = ["derive"]
+
+[dependencies.tokio]
+version = "1"
+features = ["full"]

@@ -1,0 +1,8 @@
+minecraft
+hardlink
+pnpm
+Modrinth
+Curseforge
+modpack
+curseforge
+modpacks
