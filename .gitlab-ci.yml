@@ -1,11 +1,7 @@
 # Environment
-image: "rust:slim"
+image: "rust:latest"
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
-before_script:
-  - apt-get update
-  - apt-get install -y pkg-config openssl
-  - rustup default stable
 
 stages:
 - check
@@ -25,6 +21,7 @@ check:
 clippy:
   stage: test
   script:
+  - rustup component add clippy
   - cargo clippy
   cache:
     paths:
