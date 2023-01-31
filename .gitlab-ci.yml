@@ -1,24 +1,32 @@
+# Environment
+image: "rust:latest"
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+
 stages:
 - check
 - test
 
-rust-latest:
+# Check
+check:
   stage: check
-  image: rust:latest
   script:
   - cargo check
   cache:
     paths:
     - target/
+    - cargo/
 
-cargo-clippy:
+# Test
+clippy:
   stage: test
-  image: rust:latest
   script:
+  - rustup component add clippy
   - cargo clippy
   cache:
     paths:
     - target/
+    - cargo/
   allow_failure: true
 
 sast:
