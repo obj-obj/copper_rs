@@ -1,24 +1,33 @@
+# Environment
+image: "rust:slim"
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+before_script:
+  - rustup default stable
+
 stages:
 - check
 - test
 
-rust-latest:
+# Check
+check:
   stage: check
-  image: rust:latest
   script:
   - cargo check
   cache:
     paths:
     - target/
+    - cargo/
 
-cargo-clippy:
+# Test
+clippy:
   stage: test
-  image: rust:latest
   script:
   - cargo clippy
   cache:
     paths:
     - target/
+    - cargo/
   allow_failure: true
 
 sast:
