@@ -2,33 +2,35 @@
 image: "rust:latest"
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
+cache: &global_cache
+  paths:
+    - target/
+    - cargo/
+  policy: pull
 
 stages:
 - check
+- test
 
 # Check
 check:
   stage: check
   script:
-  - cargo check
+    - cargo check
   cache:
-    paths:
-    - target/
-    - cargo/
+    <<: *global_cache
+    policy: pull-push
 
-# Test
 clippy:
-  stage: check
+  stage: test
   script:
-  - rustup component add clippy
-  - cargo clippy
+    - rustup component add clippy
+    - cargo clippy
   cache:
-    paths:
-    - target/
-    - cargo/
+    <<: *global_cache
   allow_failure: true
 
 sast:
-  stage: check
+  stage: test
 include:
 - template: Security/SAST.gitlab-ci.yml
