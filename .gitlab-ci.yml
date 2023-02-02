@@ -29,6 +29,6 @@ clippy:
   allow_failure: true
 
 sast:
-  stage: test
+  stage: check
 include:
 - template: Security/SAST.gitlab-ci.yml
