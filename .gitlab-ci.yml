@@ -5,7 +5,6 @@ variables:
 
 stages:
 - check
-- test
 
 # Check
 check:
@@ -19,7 +18,7 @@ check:
 
 # Test
 clippy:
-  stage: test
+  stage: check
   script:
   - rustup component add clippy
   - cargo clippy
